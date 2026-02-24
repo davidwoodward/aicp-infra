@@ -22,6 +22,11 @@ resource "google_project_service" "artifactregistry" {
   service = "artifactregistry.googleapis.com"
 }
 
+resource "google_project_service" "cloudbuild" {
+  project = var.project_id
+  service = "cloudbuild.googleapis.com"
+}
+
 # -----------------------------------------------
 # Locals
 # -----------------------------------------------
@@ -57,6 +62,82 @@ resource "google_firestore_database" "default" {
 }
 
 # -----------------------------------------------
+# Firestore Indexes
+# -----------------------------------------------
+
+resource "google_firestore_index" "prompts_project_order" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "prompts"
+
+  fields {
+    field_path = "project_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "order_index"
+    order      = "ASCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
+resource "google_firestore_index" "sessions_project_started" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "sessions"
+
+  fields {
+    field_path = "project_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "started_at"
+    order      = "DESCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
+resource "google_firestore_index" "sessions_agent_started" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "sessions"
+
+  fields {
+    field_path = "agent_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "started_at"
+    order      = "DESCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
+resource "google_firestore_index" "messages_session_timestamp" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "messages"
+
+  fields {
+    field_path = "session_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "timestamp"
+    order      = "ASCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
+# -----------------------------------------------
 # Service Accounts
 # -----------------------------------------------
 
@@ -64,6 +145,14 @@ resource "google_service_account" "backend" {
   project      = var.project_id
   account_id   = "aicp-backend-sa"
   display_name = "AICP Backend Service Account"
+
+  depends_on = [google_project_service.iam]
+}
+
+resource "google_service_account" "cloudbuild" {
+  project      = var.project_id
+  account_id   = "aicp-cloudbuild-sa"
+  display_name = "AICP Cloud Build Service Account"
 
   depends_on = [google_project_service.iam]
 }
@@ -82,6 +171,30 @@ resource "google_project_iam_member" "backend_logging_writer" {
   project = var.project_id
   role    = "roles/logging.logWriter"
   member  = "serviceAccount:${google_service_account.backend.email}"
+}
+
+resource "google_project_iam_member" "cloudbuild_artifactregistry_writer" {
+  project = var.project_id
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:${google_service_account.cloudbuild.email}"
+}
+
+resource "google_project_iam_member" "cloudbuild_run_admin" {
+  project = var.project_id
+  role    = "roles/run.admin"
+  member  = "serviceAccount:${google_service_account.cloudbuild.email}"
+}
+
+resource "google_project_iam_member" "cloudbuild_service_account_user" {
+  project = var.project_id
+  role    = "roles/iam.serviceAccountUser"
+  member  = "serviceAccount:${google_service_account.cloudbuild.email}"
+}
+
+resource "google_project_iam_member" "cloudbuild_logging_writer" {
+  project = var.project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.cloudbuild.email}"
 }
 
 # -----------------------------------------------
@@ -152,4 +265,38 @@ resource "google_cloud_run_v2_service_iam_member" "backend_public" {
   location = google_cloud_run_v2_service.backend.location
   role     = "roles/run.invoker"
   member   = "allUsers"
+}
+
+# -----------------------------------------------
+# Cloud Build
+# -----------------------------------------------
+
+resource "google_cloudbuild_trigger" "backend_deploy" {
+  project  = var.project_id
+  name     = "aicp-backend-deploy"
+  location = var.region
+
+  github {
+    owner = "davidwoodward"
+    name  = "aicp-app"
+
+    push {
+      branch = "^main$"
+    }
+  }
+
+  filename        = "cloudbuild.yaml"
+  service_account = google_service_account.cloudbuild.id
+
+  substitutions = {
+    _REGION     = var.region
+    _REPOSITORY = "${var.region}-docker.pkg.dev/${var.project_id}/aicp"
+    _SERVICE    = "aicp-backend"
+    _IMAGE      = "aicp-backend"
+  }
+
+  depends_on = [
+    google_project_service.cloudbuild,
+    google_service_account.cloudbuild,
+  ]
 }
