@@ -29,3 +29,13 @@ output "artifact_registry_url" {
   description = "The Artifact Registry URL for container images"
   value       = local.registry_url
 }
+
+output "cloudbuild_service_account_email" {
+  description = "The email of the Cloud Build service account"
+  value       = google_service_account.cloudbuild.email
+}
+
+output "cloudbuild_trigger_id" {
+  description = "The ID of the Cloud Build trigger for backend deploys"
+  value       = google_cloudbuild_trigger.backend_deploy.trigger_id
+}
