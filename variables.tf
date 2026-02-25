@@ -15,3 +15,9 @@ variable "backend_image" {
   type        = string
   default     = "us-central1-docker.pkg.dev/aicp-dev/aicp/aicp:latest"
 }
+
+variable "default_llm_provider" {
+  description = "Default LLM provider (gemini, openai, or anthropic)"
+  type        = string
+  default     = "gemini"
+}
