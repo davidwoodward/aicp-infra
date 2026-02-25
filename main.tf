@@ -27,6 +27,11 @@ resource "google_project_service" "cloudbuild" {
   service = "cloudbuild.googleapis.com"
 }
 
+resource "google_project_service" "secretmanager" {
+  project = var.project_id
+  service = "secretmanager.googleapis.com"
+}
+
 # -----------------------------------------------
 # Locals
 # -----------------------------------------------
@@ -198,6 +203,94 @@ resource "google_project_iam_member" "cloudbuild_logging_writer" {
 }
 
 # -----------------------------------------------
+# Secrets (LLM API Keys)
+# -----------------------------------------------
+
+resource "google_secret_manager_secret" "gemini_api_key" {
+  project   = var.project_id
+  secret_id = "gemini-api-key"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.secretmanager]
+}
+
+resource "google_secret_manager_secret" "openai_api_key" {
+  project   = var.project_id
+  secret_id = "openai-api-key"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.secretmanager]
+}
+
+resource "google_secret_manager_secret" "anthropic_api_key" {
+  project   = var.project_id
+  secret_id = "anthropic-api-key"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.secretmanager]
+}
+
+resource "google_secret_manager_secret_iam_member" "backend_gemini" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.gemini_api_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.backend.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "backend_openai" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.openai_api_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.backend.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "backend_anthropic" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.anthropic_api_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.backend.email}"
+}
+
+# Cloud Run service agent needs secret access to inject env vars
+locals {
+  cloud_run_agent = "service-${data.google_project.current.number}@serverless-robot-prod.iam.gserviceaccount.com"
+}
+
+data "google_project" "current" {
+  project_id = var.project_id
+}
+
+resource "google_secret_manager_secret_iam_member" "run_agent_gemini" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.gemini_api_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${local.cloud_run_agent}"
+}
+
+resource "google_secret_manager_secret_iam_member" "run_agent_openai" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.openai_api_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${local.cloud_run_agent}"
+}
+
+resource "google_secret_manager_secret_iam_member" "run_agent_anthropic" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.anthropic_api_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${local.cloud_run_agent}"
+}
+
+# -----------------------------------------------
 # Cloud Run
 # -----------------------------------------------
 
@@ -234,6 +327,41 @@ resource "google_cloud_run_v2_service" "backend" {
         value = "production"
       }
 
+      env {
+        name  = "DEFAULT_LLM_PROVIDER"
+        value = var.default_llm_provider
+      }
+
+      env {
+        name = "GEMINI_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.gemini_api_key.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "OPENAI_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.openai_api_key.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "ANTHROPIC_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.anthropic_api_key.secret_id
+            version = "latest"
+          }
+        }
+      }
+
       resources {
         limits = {
           cpu    = "1"
@@ -257,6 +385,9 @@ resource "google_cloud_run_v2_service" "backend" {
     google_project_service.run,
     google_service_account.backend,
     google_artifact_registry_repository.aicp,
+    google_secret_manager_secret_iam_member.backend_gemini,
+    google_secret_manager_secret_iam_member.backend_openai,
+    google_secret_manager_secret_iam_member.backend_anthropic,
   ]
 }
 
