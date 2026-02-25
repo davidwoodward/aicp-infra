@@ -203,7 +203,7 @@ resource "google_project_iam_member" "cloudbuild_logging_writer" {
 
 resource "google_cloud_run_v2_service" "backend" {
   project  = var.project_id
-  name     = "aicp-backend"
+  name     = "aicp"
   location = var.region
   ingress  = "INGRESS_TRAFFIC_ALL"
 
@@ -273,7 +273,7 @@ resource "google_cloud_run_v2_service_iam_member" "backend_public" {
 
 resource "google_cloudbuild_trigger" "backend_deploy" {
   project  = var.project_id
-  name     = "aicp-backend-deploy"
+  name     = "aicp-deploy"
   location = var.region
 
   github {
@@ -291,8 +291,8 @@ resource "google_cloudbuild_trigger" "backend_deploy" {
   substitutions = {
     _REGION     = var.region
     _REPOSITORY = "${var.region}-docker.pkg.dev/${var.project_id}/aicp"
-    _SERVICE    = "aicp-backend"
-    _IMAGE      = "aicp-backend"
+    _SERVICE    = "aicp"
+    _IMAGE      = "aicp"
   }
 
   depends_on = [

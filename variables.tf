@@ -13,5 +13,5 @@ variable "region" {
 variable "backend_image" {
   description = "Container image for the AICP backend Cloud Run service"
   type        = string
-  default     = "us-central1-docker.pkg.dev/aicp-dev/aicp/aicp-backend:latest"
+  default     = "us-central1-docker.pkg.dev/aicp-dev/aicp/aicp:latest"
 }
