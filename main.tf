@@ -142,6 +142,96 @@ resource "google_firestore_index" "messages_session_timestamp" {
   depends_on = [google_firestore_database.default]
 }
 
+resource "google_firestore_index" "chat_messages_conversation_timestamp" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "chat_messages"
+
+  fields {
+    field_path = "conversation_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "timestamp"
+    order      = "ASCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
+resource "google_firestore_index" "snippets_collection_updated" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "snippets"
+
+  fields {
+    field_path = "collection_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "updated_at"
+    order      = "DESCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
+resource "google_firestore_index" "activity_logs_entity_type_created" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "activity_logs"
+
+  fields {
+    field_path = "entity_type"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
+resource "google_firestore_index" "activity_logs_project_created" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "activity_logs"
+
+  fields {
+    field_path = "project_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
+resource "google_firestore_index" "activity_logs_entity_id_created" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "activity_logs"
+
+  fields {
+    field_path = "entity_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
 # -----------------------------------------------
 # Service Accounts
 # -----------------------------------------------
