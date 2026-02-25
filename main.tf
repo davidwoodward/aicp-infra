@@ -202,10 +202,11 @@ resource "google_project_iam_member" "cloudbuild_logging_writer" {
 # -----------------------------------------------
 
 resource "google_cloud_run_v2_service" "backend" {
-  project  = var.project_id
-  name     = "aicp"
-  location = var.region
-  ingress  = "INGRESS_TRAFFIC_ALL"
+  project             = var.project_id
+  name                = "aicp"
+  location            = var.region
+  ingress             = "INGRESS_TRAFFIC_ALL"
+  deletion_protection = false
 
   template {
     service_account = google_service_account.backend.email
