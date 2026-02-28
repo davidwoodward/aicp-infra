@@ -16,6 +16,12 @@ variable "backend_image" {
   default     = "us-central1-docker.pkg.dev/aicp-dev/aicp/aicp:latest"
 }
 
+variable "google_oauth_client_id" {
+  description = "Google OAuth 2.0 Client ID for authentication"
+  type        = string
+  default     = "211027517197-4osoj7u1jq2gqs1jsaiu1b0u2ab7a5qs.apps.googleusercontent.com"
+}
+
 variable "default_llm_provider" {
   description = "Default LLM provider (gemini, openai, or anthropic)"
   type        = string
