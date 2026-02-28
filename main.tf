@@ -178,6 +178,42 @@ resource "google_firestore_index" "snippets_collection_updated" {
   depends_on = [google_firestore_database.default]
 }
 
+resource "google_firestore_index" "snippets_active_by_updated" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "snippets"
+
+  fields {
+    field_path = "deleted_at"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "updated_at"
+    order      = "DESCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
+resource "google_firestore_index" "snippet_collections_active_by_created" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "snippet_collections"
+
+  fields {
+    field_path = "deleted_at"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
 resource "google_firestore_index" "activity_logs_entity_type_created" {
   project    = var.project_id
   database   = google_firestore_database.default.name
@@ -423,6 +459,11 @@ resource "google_cloud_run_v2_service" "backend" {
       }
 
       env {
+        name  = "GOOGLE_OAUTH_CLIENT_ID"
+        value = var.google_oauth_client_id
+      }
+
+      env {
         name = "GEMINI_API_KEY"
         value_source {
           secret_key_ref {
@@ -490,6 +531,26 @@ resource "google_cloud_run_v2_service_iam_member" "backend_public" {
 }
 
 # -----------------------------------------------
+# Domain Mapping
+# -----------------------------------------------
+
+resource "google_cloud_run_domain_mapping" "aicp" {
+  project  = var.project_id
+  name     = "aicp.dbwoodward.com"
+  location = var.region
+
+  metadata {
+    namespace = var.project_id
+  }
+
+  spec {
+    route_name = google_cloud_run_v2_service.backend.name
+  }
+
+  depends_on = [google_cloud_run_v2_service.backend]
+}
+
+# -----------------------------------------------
 # Cloud Build
 # -----------------------------------------------
 
@@ -511,10 +572,11 @@ resource "google_cloudbuild_trigger" "backend_deploy" {
   service_account = google_service_account.cloudbuild.id
 
   substitutions = {
-    _REGION     = var.region
-    _REPOSITORY = "${var.region}-docker.pkg.dev/${var.project_id}/aicp"
-    _SERVICE    = "aicp"
-    _IMAGE      = "aicp"
+    _REGION                  = var.region
+    _REPOSITORY              = "${var.region}-docker.pkg.dev/${var.project_id}/aicp"
+    _SERVICE                 = "aicp"
+    _IMAGE                   = "aicp"
+    _GOOGLE_OAUTH_CLIENT_ID  = var.google_oauth_client_id
   }
 
   depends_on = [
