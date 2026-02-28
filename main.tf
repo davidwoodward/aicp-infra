@@ -269,6 +269,146 @@ resource "google_firestore_index" "activity_logs_entity_id_created" {
 }
 
 # -----------------------------------------------
+# Firestore Indexes (user_id scoped)
+# -----------------------------------------------
+
+resource "google_firestore_index" "projects_user_created" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "projects"
+
+  fields {
+    field_path = "user_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
+resource "google_firestore_index" "conversations_user_updated" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "conversations"
+
+  fields {
+    field_path = "user_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "updated_at"
+    order      = "DESCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
+resource "google_firestore_index" "prompts_user_order" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "prompts"
+
+  fields {
+    field_path = "user_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "order_index"
+    order      = "ASCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
+resource "google_firestore_index" "snippets_user_active_updated" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "snippets"
+
+  fields {
+    field_path = "user_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "deleted_at"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "updated_at"
+    order      = "DESCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
+resource "google_firestore_index" "snippets_user_deleted" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "snippets"
+
+  fields {
+    field_path = "user_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "deleted_at"
+    order      = "DESCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
+resource "google_firestore_index" "snippet_collections_user_active_created" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "snippet_collections"
+
+  fields {
+    field_path = "user_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "deleted_at"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
+resource "google_firestore_index" "snippet_collections_user_deleted" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "snippet_collections"
+
+  fields {
+    field_path = "user_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "deleted_at"
+    order      = "DESCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
+# -----------------------------------------------
 # Service Accounts
 # -----------------------------------------------
 
