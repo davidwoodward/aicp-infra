@@ -268,6 +268,69 @@ resource "google_firestore_index" "activity_logs_entity_id_created" {
   depends_on = [google_firestore_database.default]
 }
 
+# Project-level history: WHERE user_id == X AND entity_type == Y AND project_id == Z ORDER BY created_at DESC
+resource "google_firestore_index" "activity_logs_user_type_project_created" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "activity_logs"
+
+  fields {
+    field_path = "user_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "entity_type"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "project_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
+# Prompt-level history: WHERE user_id == X AND entity_type == Y AND project_id == Z AND entity_id == W ORDER BY created_at DESC
+resource "google_firestore_index" "activity_logs_user_type_project_entity_created" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "activity_logs"
+
+  fields {
+    field_path = "user_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "entity_type"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "project_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "entity_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
 # -----------------------------------------------
 # Firestore Indexes (user_id scoped)
 # -----------------------------------------------
@@ -532,6 +595,7 @@ resource "google_cloud_run_v2_service" "backend" {
 
     scaling {
       min_instance_count = 1
+      max_instance_count = 3
     }
 
     timeout = "3600s"
