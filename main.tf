@@ -563,6 +563,28 @@ resource "google_secret_manager_secret_iam_member" "backend_encryption_key" {
   member    = "serviceAccount:${google_service_account.backend.email}"
 }
 
+# -----------------------------------------------
+# Secrets (GitHub OAuth Client Secret)
+# -----------------------------------------------
+
+resource "google_secret_manager_secret" "github_oauth_client_secret" {
+  project   = var.project_id
+  secret_id = "github-oauth-client-secret"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.secretmanager]
+}
+
+resource "google_secret_manager_secret_iam_member" "backend_github_oauth_secret" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.github_oauth_client_secret.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.backend.email}"
+}
+
 # Cloud Run service agent needs secret access to inject env vars
 locals {
   cloud_run_agent = "service-${data.google_project.current.number}@serverless-robot-prod.iam.gserviceaccount.com"
@@ -575,6 +597,13 @@ data "google_project" "current" {
 resource "google_secret_manager_secret_iam_member" "run_agent_encryption_key" {
   project   = var.project_id
   secret_id = google_secret_manager_secret.llm_encryption_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${local.cloud_run_agent}"
+}
+
+resource "google_secret_manager_secret_iam_member" "run_agent_github_oauth_secret" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.github_oauth_client_secret.secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${local.cloud_run_agent}"
 }
@@ -637,6 +666,21 @@ resource "google_cloud_run_v2_service" "backend" {
         }
       }
 
+      env {
+        name  = "GITHUB_OAUTH_CLIENT_ID"
+        value = var.github_oauth_client_id
+      }
+
+      env {
+        name = "GITHUB_OAUTH_CLIENT_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.github_oauth_client_secret.secret_id
+            version = "latest"
+          }
+        }
+      }
+
       resources {
         limits = {
           cpu    = "1"
@@ -661,6 +705,7 @@ resource "google_cloud_run_v2_service" "backend" {
     google_service_account.backend,
     google_artifact_registry_repository.aicp,
     google_secret_manager_secret_iam_member.backend_encryption_key,
+    google_secret_manager_secret_iam_member.backend_github_oauth_secret,
   ]
 }
 
@@ -719,6 +764,7 @@ resource "google_cloudbuild_trigger" "backend_deploy" {
     _SERVICE                 = "aicp"
     _IMAGE                   = "aicp"
     _GOOGLE_OAUTH_CLIENT_ID  = var.google_oauth_client_id
+    _GITHUB_OAUTH_CLIENT_ID  = var.github_oauth_client_id
   }
 
   depends_on = [

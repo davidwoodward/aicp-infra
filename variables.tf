@@ -27,3 +27,9 @@ variable "default_llm_provider" {
   type        = string
   default     = "gemini"
 }
+
+variable "github_oauth_client_id" {
+  description = "GitHub OAuth App Client ID for authentication"
+  type        = string
+  default     = "Ov23liS2EbcTCZ36bwUb"
+}
