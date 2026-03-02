@@ -471,6 +471,24 @@ resource "google_firestore_index" "snippet_collections_user_deleted" {
   depends_on = [google_firestore_database.default]
 }
 
+resource "google_firestore_index" "github_installations_user_created" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "github_installations"
+
+  fields {
+    field_path = "user_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "created_at"
+    order      = "DESCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
 # -----------------------------------------------
 # Service Accounts
 # -----------------------------------------------
@@ -609,6 +627,64 @@ resource "google_secret_manager_secret_iam_member" "run_agent_github_oauth_secre
 }
 
 # -----------------------------------------------
+# Secrets (GitHub App Private Key)
+# -----------------------------------------------
+
+resource "google_secret_manager_secret" "github_app_private_key" {
+  project   = var.project_id
+  secret_id = "github-app-private-key"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.secretmanager]
+}
+
+resource "google_secret_manager_secret_iam_member" "backend_github_app_key" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.github_app_private_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.backend.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "run_agent_github_app_key" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.github_app_private_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${local.cloud_run_agent}"
+}
+
+# -----------------------------------------------
+# Secrets (GitHub Webhook Secret)
+# -----------------------------------------------
+
+resource "google_secret_manager_secret" "github_webhook_secret" {
+  project   = var.project_id
+  secret_id = "github-webhook-secret"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.secretmanager]
+}
+
+resource "google_secret_manager_secret_iam_member" "backend_github_webhook_secret" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.github_webhook_secret.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.backend.email}"
+}
+
+resource "google_secret_manager_secret_iam_member" "run_agent_github_webhook_secret" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.github_webhook_secret.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${local.cloud_run_agent}"
+}
+
+# -----------------------------------------------
 # Cloud Run
 # -----------------------------------------------
 
@@ -681,6 +757,31 @@ resource "google_cloud_run_v2_service" "backend" {
         }
       }
 
+      env {
+        name  = "GITHUB_APP_ID"
+        value = var.github_app_id
+      }
+
+      env {
+        name = "GITHUB_APP_PRIVATE_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.github_app_private_key.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "GITHUB_WEBHOOK_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.github_webhook_secret.secret_id
+            version = "latest"
+          }
+        }
+      }
+
       resources {
         limits = {
           cpu    = "1"
@@ -706,6 +807,8 @@ resource "google_cloud_run_v2_service" "backend" {
     google_artifact_registry_repository.aicp,
     google_secret_manager_secret_iam_member.backend_encryption_key,
     google_secret_manager_secret_iam_member.backend_github_oauth_secret,
+    google_secret_manager_secret_iam_member.backend_github_app_key,
+    google_secret_manager_secret_iam_member.backend_github_webhook_secret,
   ]
 }
 
@@ -765,6 +868,7 @@ resource "google_cloudbuild_trigger" "backend_deploy" {
     _IMAGE                   = "aicp"
     _GOOGLE_OAUTH_CLIENT_ID  = var.google_oauth_client_id
     _GITHUB_OAUTH_CLIENT_ID  = var.github_oauth_client_id
+    _GITHUB_APP_SLUG         = var.github_app_slug
   }
 
   depends_on = [
