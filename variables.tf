@@ -33,3 +33,15 @@ variable "github_oauth_client_id" {
   type        = string
   default     = "Ov23liS2EbcTCZ36bwUb"
 }
+
+variable "github_app_id" {
+  description = "GitHub App ID for issue integration"
+  type        = string
+  default     = "2991797"
+}
+
+variable "github_app_slug" {
+  description = "GitHub App URL slug for frontend install link"
+  type        = string
+  default     = "aicp-github-app"
+}
