@@ -489,6 +489,49 @@ resource "google_firestore_index" "github_installations_user_created" {
   depends_on = [google_firestore_database.default]
 }
 
+# Notes: WHERE prompt_id == X AND deleted_at == null ORDER BY order_index ASC
+resource "google_firestore_index" "notes_prompt_active_order" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "notes"
+
+  fields {
+    field_path = "prompt_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "deleted_at"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "order_index"
+    order      = "ASCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
+# Notes: WHERE prompt_id == X AND deleted_at != null ORDER BY deleted_at DESC
+resource "google_firestore_index" "notes_prompt_deleted" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "notes"
+
+  fields {
+    field_path = "prompt_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "deleted_at"
+    order      = "DESCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
 # -----------------------------------------------
 # Service Accounts
 # -----------------------------------------------
