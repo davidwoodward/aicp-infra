@@ -124,6 +124,24 @@ resource "google_firestore_index" "sessions_agent_started" {
   depends_on = [google_firestore_database.default]
 }
 
+resource "google_firestore_index" "sessions_prompt_started" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "sessions"
+
+  fields {
+    field_path = "prompt_id"
+    order      = "ASCENDING"
+  }
+
+  fields {
+    field_path = "started_at"
+    order      = "DESCENDING"
+  }
+
+  depends_on = [google_firestore_database.default]
+}
+
 resource "google_firestore_index" "messages_session_timestamp" {
   project    = var.project_id
   database   = google_firestore_database.default.name
